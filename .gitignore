@@ -1,0 +1,151 @@
+# =========================
+# SISTEMA OPERATIVO
+# Windows / Linux
+# =========================
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# Linux
+*~
+.directory
+.Trash-*
+.nfs*
+
+
+# =========================
+# EDITORES / IDEs
+# VS Code, JetBrains, WebStorm, IntelliJ, Antigravity
+# =========================
+
+# Visual Studio Code
+.vscode/
+
+# JetBrains IDEs: WebStorm, IntelliJ IDEA, PyCharm, etc.
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+
+# Antigravity / editores AI
+.antigravity/
+.antigravity-cache/
+.agent-cache/
+
+# Historial local de editores
+.history/
+*.swp
+*.swo
+*.swn
+
+
+# =========================
+# ARCHIVOS TEMPORALES
+# =========================
+
+*.tmp
+*.temp
+*.bak
+*.backup
+*.old
+*.orig
+*.rej
+*.log
+
+
+# =========================
+# BASH / LINUX
+# =========================
+
+# No ignorar scripts .sh
+# *.sh
+
+# Archivos generados por pruebas
+*.out
+*.err
+nohup.out
+
+# Backups generados
+*.tar
+*.tar.gz
+*.tgz
+*.zip
+backups/
+backup/
+catalogo_backup.*
+catalogo*.csv
+catalogo*.txt
+
+
+# =========================
+# POWERSHELL
+# =========================
+
+# No ignorar scripts .ps1
+# *.ps1
+
+# Transcripciones y logs de PowerShell
+PowerShell_transcript*.txt
+*.transcript.txt
+
+# Archivos temporales de módulos/sesiones
+*.ps1~
+*.psm1~
+*.psd1~
+*.ps1xml~
+
+
+# =========================
+# EVIDENCIAS Y PRUEBAS
+# =========================
+
+# Mantener carpetas con .gitkeep, pero evitar archivos pesados accidentales
+*.mp4
+*.mov
+*.avi
+*.mkv
+
+# Salidas temporales de pruebas
+salida_*.txt
+prueba_*.txt
+test_*.txt
+
+
+# =========================
+# ENTORNOS / VARIABLES SENSIBLES
+# =========================
+
+.env
+.env.*
+!.env.example
+
+secrets.*
+credentials.*
+*.key
+*.pem
+*.p12
+*.pfx
+
+
+# =========================
+# ARCHIVOS COMPRIMIDOS GENERADOS
+# =========================
+
+*.7z
+*.rar
+*.gz
+*.bz2
+*.xz
+
+
+# =========================
+# EXCEPCIONES IMPORTANTES
+# =========================
+
+# Mantener carpetas vacías versionadas
+!.gitkeep
