@@ -1,5 +1,5 @@
 show_main_menu() {
-    clear 2>/dev/null || printf '\033c'
+    clear
     echo "=============================================="
     echo " Herramienta Bash - Administración Data Center"
     echo "=============================================="
@@ -14,7 +14,7 @@ show_main_menu() {
 
 pause_screen() {
     echo
-    read -r -p "Presione ENTER para continuar..."
+    read -r -p "Presione ENTER para continuar..." _
 }
 
 print_section_title() {
