@@ -1,5 +1,8 @@
 show_main_menu() {
-    clear
+    if command -v clear > /dev/null 2>&1; then
+        clear
+    fi
+
     echo "=============================================="
     echo " Herramienta Bash - Administración Data Center"
     echo "=============================================="

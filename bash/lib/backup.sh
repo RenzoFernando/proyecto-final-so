@@ -19,6 +19,7 @@ run_backup() {
     local last_modified=""
     local escaped_path=""
     local escaped_modified=""
+    local file_path=""
 
     read -r -p "Digite el directorio origen: " source_dir
     read -r -p "Digite el directorio destino en la USB: " destination_dir
@@ -48,8 +49,8 @@ run_backup() {
         return 1
     fi
 
-    if [ ! -w "$destination_dir" ]; then
-        echo "El destino no tiene permisos de escritura."
+    if [ ! -w "$destination_dir" ] || [ ! -x "$destination_dir" ]; then
+        echo "El destino no tiene permisos suficientes."
         return 1
     fi
 
@@ -66,6 +67,18 @@ run_backup() {
         return 1
     fi
 
+    if [ "$source_path" = "$destination_path" ]; then
+        echo "El destino no puede ser el mismo directorio origen."
+        return 1
+    fi
+
+    case "$destination_path/" in
+        "$source_path/"*)
+            echo "El destino no puede estar dentro del directorio origen."
+            return 1
+            ;;
+    esac
+
     source_name="$(basename "$source_path")"
 
     if [ -z "$source_name" ] || [ "$source_name" = "/" ]; then
@@ -76,18 +89,20 @@ run_backup() {
     backup_dir="$destination_path/backup_${source_name}_${timestamp}"
     catalog_file="$backup_dir/catalogo_backup.csv"
 
-    if ! mkdir -p "$backup_dir"; then
+    if ! mkdir "$backup_dir"; then
         echo "No se pudo crear el directorio de backup."
         return 1
     fi
 
     if ! cp -a "$source_path"/. "$backup_dir"/ 2> /dev/null; then
         echo "No se pudo completar la copia de seguridad."
+        rm -rf "$backup_dir"
         return 1
     fi
 
     if ! printf '"Ruta","UltimaModificacion"\n' > "$catalog_file"; then
         echo "No se pudo crear el catálogo del backup."
+        rm -rf "$backup_dir"
         return 1
     fi
 

@@ -1,49 +1,50 @@
-$ScriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
+$ScriptRoot = $PSScriptRoot
 
-function Import-ProjectScript {
+if ([string]::IsNullOrWhiteSpace($ScriptRoot)) {
+    $ScriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
+}
+
+$ProjectScripts = @(
+    "UI.ps1",
+    "Users.ps1",
+    "Storage.ps1",
+    "Files.ps1",
+    "Memory.ps1",
+    "Backup.ps1"
+)
+
+foreach ($fileName in $ProjectScripts) {
+    $scriptPath = Join-Path -Path $ScriptRoot -ChildPath "lib\$fileName"
+
+    if (-not (Test-Path -LiteralPath $scriptPath)) {
+        throw "No se encontró el archivo requerido: $scriptPath"
+    }
+
+    if (-not (Get-Item -LiteralPath $scriptPath -ErrorAction Stop).PSIsContainer) {
+        . $scriptPath
+    } else {
+        throw "La ruta requerida no corresponde a un archivo: $scriptPath"
+    }
+}
+
+function Require-ProjectFunction {
     param (
-        [string]$Path
+        [string]$FunctionName
     )
 
-    if (Test-Path -LiteralPath $Path) {
-        . $Path
+    if (-not (Get-Command $FunctionName -CommandType Function -ErrorAction SilentlyContinue)) {
+        throw "No se cargó la función requerida: $FunctionName"
     }
 }
 
-Import-ProjectScript "$ScriptRoot\lib\UI.ps1"
-Import-ProjectScript "$ScriptRoot\lib\Users.ps1"
-Import-ProjectScript "$ScriptRoot\lib\Storage.ps1"
-Import-ProjectScript "$ScriptRoot\lib\Files.ps1"
-Import-ProjectScript "$ScriptRoot\lib\Memory.ps1"
-Import-ProjectScript "$ScriptRoot\lib\Backup.ps1"
-
-if (-not (Get-Command Show-Filesystems -CommandType Function -ErrorAction SilentlyContinue)) {
-    function Show-Filesystems {
-        Write-SectionTitle "Filesystems/discos conectados"
-        Write-Host "Funcionalidad pendiente por implementar por Luna."
-    }
-}
-
-if (-not (Get-Command Show-TopTenFiles -CommandType Function -ErrorAction SilentlyContinue)) {
-    function Show-TopTenFiles {
-        Write-SectionTitle "Diez archivos más grandes"
-        Write-Host "Funcionalidad pendiente por implementar por Luna."
-    }
-}
-
-if (-not (Get-Command Show-MemoryAndSwap -CommandType Function -ErrorAction SilentlyContinue)) {
-    function Show-MemoryAndSwap {
-        Write-SectionTitle "Memoria libre y swap/pagefile en uso"
-        Write-Host "Funcionalidad pendiente por implementar por Hideki."
-    }
-}
-
-if (-not (Get-Command Start-Backup -CommandType Function -ErrorAction SilentlyContinue)) {
-    function Start-Backup {
-        Write-SectionTitle "Backup de directorio a USB con catálogo"
-        Write-Host "Funcionalidad pendiente por implementar por Hideki."
-    }
-}
+Require-ProjectFunction "Show-MainMenu"
+Require-ProjectFunction "Pause-Screen"
+Require-ProjectFunction "Write-SectionTitle"
+Require-ProjectFunction "Show-UsersLastLogin"
+Require-ProjectFunction "Show-Filesystems"
+Require-ProjectFunction "Show-TopTenFiles"
+Require-ProjectFunction "Show-MemoryAndSwap"
+Require-ProjectFunction "Start-Backup"
 
 function Start-App {
     do {

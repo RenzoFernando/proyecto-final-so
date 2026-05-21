@@ -2,10 +2,10 @@ function Get-SystemMemoryInfo {
     try {
         if (Get-Command Get-CimInstance -ErrorAction SilentlyContinue) {
             $os = Get-CimInstance -ClassName Win32_OperatingSystem -ErrorAction Stop
-            $pageFiles = Get-CimInstance -ClassName Win32_PageFileUsage -ErrorAction SilentlyContinue
+            $pageFiles = @(Get-CimInstance -ClassName Win32_PageFileUsage -ErrorAction SilentlyContinue)
         } else {
             $os = Get-WmiObject -Class Win32_OperatingSystem -ErrorAction Stop
-            $pageFiles = Get-WmiObject -Class Win32_PageFileUsage -ErrorAction SilentlyContinue
+            $pageFiles = @(Get-WmiObject -Class Win32_PageFileUsage -ErrorAction SilentlyContinue)
         }
 
         $memoryTotalBytes = [int64]$os.TotalVisibleMemorySize * 1KB
@@ -20,12 +20,12 @@ function Get-SystemMemoryInfo {
         $pageFileUsedBytes = 0
         $pageFileUsedPercent = 0
 
-        foreach ($pageFile in @($pageFiles)) {
-            if ($null -ne $pageFile.AllocatedBaseSize) {
+        foreach ($pageFile in $pageFiles) {
+            if ($null -ne $pageFile -and $null -ne $pageFile.AllocatedBaseSize) {
                 $pageFileTotalBytes += [int64]$pageFile.AllocatedBaseSize * 1MB
             }
 
-            if ($null -ne $pageFile.CurrentUsage) {
+            if ($null -ne $pageFile -and $null -ne $pageFile.CurrentUsage) {
                 $pageFileUsedBytes += [int64]$pageFile.CurrentUsage * 1MB
             }
         }

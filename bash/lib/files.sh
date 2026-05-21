@@ -1,4 +1,9 @@
 show_top_ten_files() {
+    local input_path=""
+    local search_path=""
+    local error_file=""
+    local result_file=""
+
     print_section_title "Diez archivos más grandes"
 
     read -r -p "Digite el disco, filesystem o directorio a consultar: " input_path
@@ -18,6 +23,11 @@ show_top_ten_files() {
         return 1
     fi
 
+    if [ ! -r "$input_path" ] || [ ! -x "$input_path" ]; then
+        echo "No hay permisos suficientes para leer la ruta especificada."
+        return 1
+    fi
+
     if command -v realpath > /dev/null 2>&1; then
         search_path="$(realpath "$input_path" 2> /dev/null)"
     else
@@ -30,22 +40,44 @@ show_top_ten_files() {
     fi
 
     error_file="$(mktemp)"
-    result="$(find "$search_path" -type f -printf '%s\t%p\n' 2> "$error_file" | sort -rn | head -n 10)"
 
-    if [ -z "$result" ]; then
-        echo "No se encontraron archivos en la ruta especificada."
+    if [ -z "$error_file" ]; then
+        echo "No se pudo crear un archivo temporal para errores."
+        return 1
+    fi
+
+    result_file="$(mktemp)"
+
+    if [ -z "$result_file" ]; then
+        echo "No se pudo crear un archivo temporal para resultados."
         rm -f "$error_file"
+        return 1
+    fi
+
+    find "$search_path" -type f -printf '%s\t%p\0' 2> "$error_file" | LC_ALL=C sort -z -rn | head -z -n 10 > "$result_file"
+
+    if [ ! -s "$result_file" ]; then
+        echo "No se encontraron archivos en la ruta especificada."
+        rm -f "$error_file" "$result_file"
         return 0
     fi
 
     printf "%18s  %s\n" "TamanoBytes" "TrayectoriaCompleta"
     printf "%18s  %s\n" "------------------" "------------------------------"
-    printf "%s\n" "$result" | awk -F '\t' '{printf "%18s  %s\n", $1, $2}'
+    awk -v RS='\0' -F '\t' '
+        NF >= 2 {
+            path = $2
+            for (i = 3; i <= NF; i++) {
+                path = path FS $i
+            }
+            printf "%18s  %s\n", $1, path
+        }
+    ' "$result_file"
 
     if [ -s "$error_file" ]; then
         echo
         echo "Algunos archivos o directorios no se pudieron leer por permisos."
     fi
 
-    rm -f "$error_file"
+    rm -f "$error_file" "$result_file"
 }

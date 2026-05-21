@@ -20,12 +20,12 @@ function Show-Filesystems {
 
     try {
         if (Get-Command Get-CimInstance -ErrorAction SilentlyContinue) {
-            $disks = Get-CimInstance -ClassName Win32_LogicalDisk -ErrorAction Stop
+            $disks = @(Get-CimInstance -ClassName Win32_LogicalDisk -ErrorAction Stop)
         } else {
-            $disks = Get-WmiObject -Class Win32_LogicalDisk -ErrorAction Stop
+            $disks = @(Get-WmiObject -Class Win32_LogicalDisk -ErrorAction Stop)
         }
 
-        $result = $disks |
+        $result = @($disks |
             Where-Object { $null -ne $_.Size } |
             Sort-Object -Property DeviceID |
             Select-Object -Property @{
@@ -49,9 +49,9 @@ function Show-Filesystems {
             }, @{
                 Name = "LibreBytes"
                 Expression = { [int64]$_.FreeSpace }
-            }
+            })
 
-        if ($result) {
+        if ($result.Count -gt 0) {
             $result | Format-Table -AutoSize
         } else {
             Write-Host "No se encontraron discos con tamaño disponible."

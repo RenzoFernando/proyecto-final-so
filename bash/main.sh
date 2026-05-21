@@ -3,8 +3,27 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 import_script() {
-    if [ -f "$1" ]; then
-        source "$1"
+    local script_path="$1"
+
+    if [ ! -f "$script_path" ]; then
+        echo "No se encontró el archivo requerido: $script_path"
+        exit 1
+    fi
+
+    if [ ! -r "$script_path" ]; then
+        echo "No se puede leer el archivo requerido: $script_path"
+        exit 1
+    fi
+
+    source "$script_path"
+}
+
+require_function() {
+    local function_name="$1"
+
+    if ! declare -F "$function_name" > /dev/null; then
+        echo "No se cargó la función requerida: $function_name"
+        exit 1
     fi
 }
 
@@ -15,40 +34,26 @@ import_script "$SCRIPT_DIR/lib/files.sh"
 import_script "$SCRIPT_DIR/lib/memory.sh"
 import_script "$SCRIPT_DIR/lib/backup.sh"
 
-if ! declare -F show_filesystems > /dev/null; then
-    show_filesystems() {
-        print_section_title "Filesystems/discos conectados"
-        echo "Funcionalidad pendiente por implementar por Luna."
-    }
-fi
-
-if ! declare -F show_top_ten_files > /dev/null; then
-    show_top_ten_files() {
-        print_section_title "Diez archivos más grandes"
-        echo "Funcionalidad pendiente por implementar por Luna."
-    }
-fi
-
-if ! declare -F show_memory_and_swap > /dev/null; then
-    show_memory_and_swap() {
-        print_section_title "Memoria libre y swap en uso"
-        echo "Funcionalidad pendiente por implementar por Hideki."
-    }
-fi
-
-if ! declare -F run_backup > /dev/null; then
-    run_backup() {
-        print_section_title "Backup de directorio a USB con catálogo"
-        echo "Funcionalidad pendiente por implementar por Hideki."
-    }
-fi
+require_function show_main_menu
+require_function pause_screen
+require_function print_section_title
+require_function show_users_last_login
+require_function show_filesystems
+require_function show_top_ten_files
+require_function show_memory_and_swap
+require_function run_backup
 
 main() {
     local option=""
 
     while true; do
         show_main_menu
-        read -r -p "Seleccione una opción: " option
+
+        if ! read -r -p "Seleccione una opción: " option; then
+            echo
+            echo "Entrada finalizada."
+            exit 1
+        fi
 
         case "$option" in
             1)

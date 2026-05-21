@@ -13,6 +13,28 @@ function Test-WritableDirectory {
     }
 }
 
+function Test-DestinationInsideSource {
+    param (
+        [string]$SourcePath,
+        [string]$DestinationPath
+    )
+
+    $trimCharacters = [char[]]@([System.IO.Path]::DirectorySeparatorChar, [System.IO.Path]::AltDirectorySeparatorChar)
+    $sourceFull = [System.IO.Path]::GetFullPath($SourcePath).TrimEnd($trimCharacters)
+    $destinationFull = [System.IO.Path]::GetFullPath($DestinationPath).TrimEnd($trimCharacters)
+    $sourcePrefix = $sourceFull + [System.IO.Path]::DirectorySeparatorChar
+
+    if ($destinationFull.Equals($sourceFull, [System.StringComparison]::OrdinalIgnoreCase)) {
+        return $true
+    }
+
+    if ($destinationFull.StartsWith($sourcePrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
+        return $true
+    }
+
+    return $false
+}
+
 function Start-Backup {
     Write-SectionTitle "Backup de directorio a USB con catálogo"
 
@@ -55,6 +77,11 @@ function Start-Backup {
         return
     }
 
+    if (Test-DestinationInsideSource -SourcePath $sourcePath -DestinationPath $destinationPath) {
+        Write-Host "El destino no puede ser el mismo directorio origen ni estar dentro de él."
+        return
+    }
+
     if (-not (Test-WritableDirectory -Path $destinationPath)) {
         Write-Host "El destino no tiene permisos de escritura."
         return
@@ -71,18 +98,20 @@ function Start-Backup {
     $catalogPath = Join-Path -Path $backupDirectory -ChildPath "catalogo_backup.csv"
 
     try {
-        New-Item -ItemType Directory -Path $backupDirectory -Force -ErrorAction Stop | Out-Null
+        New-Item -ItemType Directory -Path $backupDirectory -ErrorAction Stop | Out-Null
 
         Get-ChildItem -LiteralPath $sourcePath -Force -ErrorAction Stop | ForEach-Object {
             Copy-Item -LiteralPath $_.FullName -Destination $backupDirectory -Recurse -Force -ErrorAction Stop
         }
 
+        $trimCharacters = [char[]]@('\', '/')
         $catalogEntries = @(Get-ChildItem -LiteralPath $backupDirectory -Recurse -File -Force -ErrorAction SilentlyContinue |
             Where-Object { $_.FullName -ne $catalogPath } |
+            Sort-Object -Property FullName |
             Select-Object -Property @{
                 Name = "Ruta"
                 Expression = {
-                    $_.FullName.Substring($backupDirectory.Length).TrimStart("\", "/")
+                    $_.FullName.Substring($backupDirectory.Length).TrimStart($trimCharacters)
                 }
             }, @{
                 Name = "UltimaModificacion"
@@ -101,5 +130,9 @@ function Start-Backup {
     } catch {
         Write-Host "No se pudo completar la copia de seguridad."
         Write-Host $_
+
+        if (Test-Path -LiteralPath $backupDirectory) {
+            Remove-Item -LiteralPath $backupDirectory -Recurse -Force -ErrorAction SilentlyContinue
+        }
     }
 }

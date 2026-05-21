@@ -24,7 +24,7 @@ function Show-TopTenFiles {
     $accessErrors = @()
 
     try {
-        $files = Get-ChildItem -LiteralPath $resolvedPath -Recurse -File -Force -ErrorAction SilentlyContinue -ErrorVariable accessErrors |
+        $files = @(Get-ChildItem -LiteralPath $resolvedPath -Recurse -File -Force -ErrorAction SilentlyContinue -ErrorVariable accessErrors |
             Sort-Object -Property Length -Descending |
             Select-Object -First 10 -Property @{
                 Name = "TamanoBytes"
@@ -32,9 +32,9 @@ function Show-TopTenFiles {
             }, @{
                 Name = "TrayectoriaCompleta"
                 Expression = { $_.FullName }
-            }
+            })
 
-        if (@($files).Count -eq 0) {
+        if ($files.Count -eq 0) {
             Write-Host "No se encontraron archivos en la ruta especificada."
             return
         }
