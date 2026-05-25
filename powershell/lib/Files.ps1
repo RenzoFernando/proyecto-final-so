@@ -1,4 +1,22 @@
+<#
+.SYNOPSIS
+Busca los diez archivos más grandes en una ruta indicada por el usuario.
+.DESCRIPTION
+Implementa la opción 3 del proyecto. Valida la ruta suministrada, recorre archivos de forma recursiva con Get-ChildItem, ordena por tamaño y muestra las diez primeras entradas con trayectoria completa.
+#>
+
 function Show-TopTenFiles {
+    <#
+    .SYNOPSIS
+    Muestra nombre, tamaño y trayectoria de los diez archivos más grandes.
+    .DESCRIPTION
+    Solicita al usuario un disco, filesystem o directorio. La ruta debe existir y corresponder a un contenedor. Los errores de acceso se acumulan sin detener toda la búsqueda, porque algunos directorios pueden requerir permisos elevados.
+    .OUTPUTS
+    Tabla escrita en consola con TamanoBytes y TrayectoriaCompleta.
+    .EXAMPLE
+    Show-TopTenFiles
+    Solicita una ruta y muestra los diez archivos más grandes.
+    #>
     Write-SectionTitle "Diez archivos más grandes"
 
     $inputPath = Read-Host "Digite el disco, filesystem o directorio a consultar"
