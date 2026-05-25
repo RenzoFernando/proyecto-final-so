@@ -1,3 +1,7 @@
+#!/bin/bash
+
+# Despliega filesystems montados con tamaño y espacio libre en bytes.
+
 show_filesystems() {
     local df_output=""
 

@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Lee /proc/meminfo para calcular memoria libre/disponible y swap usado.
+# Si MemAvailable existe, se usa como mejor aproximación de memoria disponible.
+
 show_memory_and_swap() {
     print_section_title "Memoria libre y swap en uso"
 
@@ -10,6 +13,7 @@ show_memory_and_swap() {
 
     local mem_total_kb=""
     local mem_free_kb=""
+    local mem_available_kb=""
     local swap_total_kb=""
     local swap_free_kb=""
     local mem_total_bytes=0
@@ -22,11 +26,21 @@ show_memory_and_swap() {
 
     mem_total_kb="$(awk '/^MemTotal:/ {print $2}' /proc/meminfo)"
     mem_free_kb="$(awk '/^MemFree:/ {print $2}' /proc/meminfo)"
+    mem_available_kb="$(awk '/^MemAvailable:/ {print $2}' /proc/meminfo)"
     swap_total_kb="$(awk '/^SwapTotal:/ {print $2}' /proc/meminfo)"
     swap_free_kb="$(awk '/^SwapFree:/ {print $2}' /proc/meminfo)"
 
-    if [ -z "$mem_total_kb" ] || [ -z "$mem_free_kb" ]; then
-        echo "No se pudo obtener la información de memoria."
+    if [ -z "$mem_total_kb" ]; then
+        echo "No se pudo obtener la información total de memoria."
+        return 1
+    fi
+
+    if [ -n "$mem_available_kb" ]; then
+        mem_free_kb="$mem_available_kb"
+    fi
+
+    if [ -z "$mem_free_kb" ]; then
+        echo "No se pudo obtener la información de memoria libre."
         return 1
     fi
 

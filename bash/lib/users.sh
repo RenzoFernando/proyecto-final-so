@@ -1,11 +1,18 @@
 #!/bin/bash
 
+# Consulta usuarios locales interactivos y su último login.
+# Se toman de /etc/passwd los usuarios con UID 0 o UID >= 1000 y shell válido.
+
 get_created_users() {
     if command -v getent > /dev/null 2>&1; then
-        getent passwd | awk -F: '{print $1}' | sort
+        getent passwd
     else
-        awk -F: '{print $1}' /etc/passwd | sort
-    fi
+        cat /etc/passwd
+    fi | awk -F: '
+        ($3 == 0 || $3 >= 1000) && $7 !~ /(nologin|false)$/ {
+            print $1
+        }
+    ' | sort
 }
 
 get_last_login_for_user() {

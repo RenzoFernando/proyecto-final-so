@@ -1,7 +1,65 @@
 #!/bin/bash
 
+# Realiza una copia de seguridad de un directorio hacia una memoria USB.
+# Además crea un catálogo CSV con ruta relativa y fecha de última modificación.
+
 escape_csv_field() {
     printf '%s' "$1" | sed 's/"/""/g'
+}
+
+resolve_directory_path() {
+    local directory_path="$1"
+
+    if command -v realpath > /dev/null 2>&1; then
+        realpath "$directory_path" 2> /dev/null
+    else
+        cd "$directory_path" 2> /dev/null && pwd -P
+    fi
+}
+
+get_mount_source_for_path() {
+    local directory_path="$1"
+
+    if command -v findmnt > /dev/null 2>&1; then
+        findmnt -T "$directory_path" -no SOURCE 2> /dev/null | head -n 1
+        return
+    fi
+
+    df -P "$directory_path" 2> /dev/null | awk 'NR == 2 {print $1}'
+}
+
+is_usb_destination() {
+    local destination_path="$1"
+    local mount_source=""
+    local parent_device=""
+
+    if ! command -v lsblk > /dev/null 2>&1; then
+        return 1
+    fi
+
+    mount_source="$(get_mount_source_for_path "$destination_path")"
+
+    case "$mount_source" in
+        /dev/*)
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+
+    if lsblk -no RM,TRAN "$mount_source" 2> /dev/null | awk '{ if ($1 == 1 || $2 == "usb") found = 1 } END { exit found ? 0 : 1 }'; then
+        return 0
+    fi
+
+    parent_device="$(lsblk -no PKNAME "$mount_source" 2> /dev/null | awk 'NF > 0 {print $1; exit}')"
+
+    if [ -n "$parent_device" ]; then
+        if lsblk -no RM,TRAN "/dev/$parent_device" 2> /dev/null | awk '{ if ($1 == 1 || $2 == "usb") found = 1 } END { exit found ? 0 : 1 }'; then
+            return 0
+        fi
+    fi
+
+    return 1
 }
 
 run_backup() {
@@ -54,13 +112,8 @@ run_backup() {
         return 1
     fi
 
-    if command -v realpath > /dev/null 2>&1; then
-        source_path="$(realpath "$source_dir" 2> /dev/null)"
-        destination_path="$(realpath "$destination_dir" 2> /dev/null)"
-    else
-        source_path="$(cd "$source_dir" 2> /dev/null && pwd -P)"
-        destination_path="$(cd "$destination_dir" 2> /dev/null && pwd -P)"
-    fi
+    source_path="$(resolve_directory_path "$source_dir")"
+    destination_path="$(resolve_directory_path "$destination_dir")"
 
     if [ -z "$source_path" ] || [ -z "$destination_path" ]; then
         echo "No se pudieron resolver las trayectorias completas."
@@ -78,6 +131,11 @@ run_backup() {
             return 1
             ;;
     esac
+
+    if ! is_usb_destination "$destination_path"; then
+        echo "El destino debe corresponder a una memoria USB o unidad removible montada."
+        return 1
+    fi
 
     source_name="$(basename "$source_path")"
 
@@ -116,7 +174,7 @@ run_backup() {
                 printf '"%s","%s"\n' "$escaped_path" "$escaped_modified" >> "$catalog_file"
             fi
         fi
-    done < <(find "$backup_dir" -type f -print0 2> /dev/null)
+    done < <(find "$backup_dir" -type f -print0 2> /dev/null | LC_ALL=C sort -z)
 
     echo "Backup finalizado correctamente."
     echo "Directorio de backup: $backup_dir"

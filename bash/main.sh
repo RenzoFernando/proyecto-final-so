@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Punto de entrada de la herramienta Bash.
+# Carga los módulos funcionales, valida las funciones requeridas y controla el menú principal.
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 import_script() {

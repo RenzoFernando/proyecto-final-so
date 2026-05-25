@@ -1,3 +1,8 @@
+#!/bin/bash
+
+# Busca los diez archivos más grandes dentro de la ruta indicada por el usuario.
+# La salida conserva la trayectoria completa de cada archivo.
+
 show_top_ten_files() {
     local input_path=""
     local search_path=""

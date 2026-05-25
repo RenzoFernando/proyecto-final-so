@@ -1,5 +1,9 @@
+#!/bin/bash
+
+# Funciones de presentación usadas por todos los módulos de la aplicación.
+
 show_main_menu() {
-    if command -v clear > /dev/null 2>&1; then
+    if command -v clear > /dev/null 2>&1 && [ -n "$TERM" ]; then
         clear
     fi
 
