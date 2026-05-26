@@ -1,4 +1,24 @@
+<#
+.SYNOPSIS
+Consulta discos/filesystems conectados en Windows.
+.DESCRIPTION
+Implementa la opción 2 del proyecto. Usa la clase Win32_LogicalDisk mediante CIM o WMI para consultar unidades lógicas, tipo, tamaño total y espacio libre en bytes.
+#>
+
 function Get-DriveTypeName {
+    <#
+    .SYNOPSIS
+    Traduce el código DriveType de Windows a texto legible.
+    .DESCRIPTION
+    Win32_LogicalDisk representa el tipo de unidad con números. Esta función convierte esos números en etiquetas entendibles para el usuario.
+    .PARAMETER DriveType
+    Código numérico DriveType devuelto por Win32_LogicalDisk.
+    .OUTPUTS
+    Cadena con el nombre del tipo de disco.
+    .EXAMPLE
+    Get-DriveTypeName -DriveType 3
+    Devuelve "Disco fijo".
+    #>
     param (
         [int]$DriveType
     )
@@ -16,6 +36,17 @@ function Get-DriveTypeName {
 }
 
 function Show-Filesystems {
+    <#
+    .SYNOPSIS
+    Muestra discos conectados con tamaño y espacio libre en bytes.
+    .DESCRIPTION
+    Consulta Win32_LogicalDisk con Get-CimInstance si está disponible. Si CIM no está disponible, usa Get-WmiObject. La salida se ordena por letra de unidad y se presenta como tabla.
+    .OUTPUTS
+    Tabla escrita en consola con Disco, Etiqueta, Tipo, TamanoBytes y LibreBytes.
+    .EXAMPLE
+    Show-Filesystems
+    Muestra la opción 2 del proyecto.
+    #>
     Write-SectionTitle "Filesystems/discos conectados"
 
     try {

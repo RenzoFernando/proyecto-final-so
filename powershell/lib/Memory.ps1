@@ -1,4 +1,22 @@
+<#
+.SYNOPSIS
+Consulta memoria física libre y pagefile/swap usado.
+.DESCRIPTION
+Implementa la opción 4 del proyecto. En Windows, la información de memoria física se obtiene desde Win32_OperatingSystem y el espacio de paginación usado desde Win32_PageFileUsage. El pagefile se reporta como equivalente práctico del swap.
+#>
+
 function Get-SystemMemoryInfo {
+    <#
+    .SYNOPSIS
+    Devuelve objetos con memoria libre y pagefile/swap usado.
+    .DESCRIPTION
+    Usa CIM cuando está disponible y WMI como alternativa. Calcula bytes y porcentaje de memoria física libre y pagefile usado.
+    .OUTPUTS
+    Objetos PSCustomObject con Recurso, Bytes y Porcentaje.
+    .EXAMPLE
+    Get-SystemMemoryInfo
+    Devuelve dos registros: memoria libre y pagefile/swap usado.
+    #>
     try {
         if (Get-Command Get-CimInstance -ErrorAction SilentlyContinue) {
             $os = Get-CimInstance -ClassName Win32_OperatingSystem -ErrorAction Stop
@@ -51,6 +69,17 @@ function Get-SystemMemoryInfo {
 }
 
 function Show-MemoryAndSwap {
+    <#
+    .SYNOPSIS
+    Muestra memoria libre y pagefile/swap usado en formato de tabla.
+    .DESCRIPTION
+    Es la función llamada desde el menú para la opción 4. Encapsula la consulta y presentación para que los errores no cierren la aplicación.
+    .OUTPUTS
+    Tabla escrita en consola.
+    .EXAMPLE
+    Show-MemoryAndSwap
+    Muestra la opción 4 del proyecto.
+    #>
     Write-SectionTitle "Memoria libre y swap/pagefile en uso"
 
     try {
