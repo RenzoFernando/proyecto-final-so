@@ -1,8 +1,37 @@
 #!/bin/bash
 
-# Lee /proc/meminfo para calcular memoria libre/disponible y swap usado.
-# Si MemAvailable existe, se usa como mejor aproximación de memoria disponible.
+# ==============================================================================
+# Archivo: lib/memory.sh
+# Propósito:
+#   Implementar la opción 4 del proyecto: memoria libre y swap usado.
+# Relación con el curso:
+#   Usa /proc/meminfo como interfaz de consulta del kernel Linux. AWK se emplea
+#   para extraer registros específicos y hacer cálculos de porcentaje.
+# ==============================================================================
 
+# get_meminfo_value
+# Entrada:
+#   $1: nombre del campo de /proc/meminfo sin los dos puntos.
+# Salida:
+#   Imprime el valor numérico del campo en KB.
+# Descripción:
+#   Evita repetir varias expresiones awk y mantiene concentrada la lectura de
+#   registros de /proc/meminfo.
+get_meminfo_value() {
+    local field_name="$1"
+
+    awk -v field="$field_name:" '$1 == field {print $2; exit}' /proc/meminfo
+}
+
+# show_memory_and_swap
+# Entrada:
+#   No recibe parámetros.
+# Salida:
+#   Imprime memoria libre/disponible y swap usado en bytes y porcentaje.
+# Descripción:
+#   Usa MemAvailable si el kernel lo reporta, porque representa mejor la memoria
+#   que puede usarse sin swap. Si no existe, usa MemFree. El swap usado se calcula
+#   como SwapTotal - SwapFree.
 show_memory_and_swap() {
     print_section_title "Memoria libre y swap en uso"
 
@@ -24,11 +53,11 @@ show_memory_and_swap() {
     local mem_free_percent="0.00"
     local swap_used_percent="0.00"
 
-    mem_total_kb="$(awk '/^MemTotal:/ {print $2}' /proc/meminfo)"
-    mem_free_kb="$(awk '/^MemFree:/ {print $2}' /proc/meminfo)"
-    mem_available_kb="$(awk '/^MemAvailable:/ {print $2}' /proc/meminfo)"
-    swap_total_kb="$(awk '/^SwapTotal:/ {print $2}' /proc/meminfo)"
-    swap_free_kb="$(awk '/^SwapFree:/ {print $2}' /proc/meminfo)"
+    mem_total_kb="$(get_meminfo_value "MemTotal")"
+    mem_free_kb="$(get_meminfo_value "MemFree")"
+    mem_available_kb="$(get_meminfo_value "MemAvailable")"
+    swap_total_kb="$(get_meminfo_value "SwapTotal")"
+    swap_free_kb="$(get_meminfo_value "SwapFree")"
 
     if [ -z "$mem_total_kb" ]; then
         echo "No se pudo obtener la información total de memoria."

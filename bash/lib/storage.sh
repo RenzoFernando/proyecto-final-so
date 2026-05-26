@@ -1,7 +1,22 @@
 #!/bin/bash
 
-# Despliega filesystems montados con tamaño y espacio libre en bytes.
+# ==============================================================================
+# Archivo: lib/storage.sh
+# Propósito:
+#   Implementar la opción 2 del proyecto: listar filesystems o discos conectados.
+# Relación con el curso:
+#   Usa comandos del sistema operativo y AWK como filtro de texto. df consulta la
+#   información del sistema de archivos y awk formatea los campos requeridos.
+# ==============================================================================
 
+# show_filesystems
+# Entrada:
+#   No recibe parámetros.
+# Salida:
+#   Imprime filesystem, punto de montaje, tamaño total en bytes y bytes libres.
+# Descripción:
+#   Ejecuta df con tamaño en bytes (-B1) y formato portable (-P). Luego usa awk
+#   para seleccionar únicamente las columnas relevantes para la rúbrica.
 show_filesystems() {
     local df_output=""
 

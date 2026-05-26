@@ -1,20 +1,71 @@
 #!/bin/bash
 
-# Consulta usuarios locales interactivos y su último login.
-# Se toman de /etc/passwd los usuarios con UID 0 o UID >= 1000 y shell válido.
+# ==============================================================================
+# Archivo: lib/users.sh
+# Propósito:
+#   Implementar la opción 1 del proyecto: usuarios creados y fecha de último login.
+# Relación con el curso:
+#   Usa archivos y comandos propios de Linux. /etc/passwd funciona como fuente de
+#   usuarios locales, mientras lastlog o last consultan registros históricos de
+#   ingreso al sistema.
+# ==============================================================================
 
+# get_uid_min
+# Entrada:
+#   No recibe parámetros.
+# Salida:
+#   Imprime el UID mínimo configurado para usuarios normales. Si no se puede leer,
+#   imprime 1000 como valor por omisión frecuente en Linux.
+# Descripción:
+#   Evita listar cuentas internas del sistema. Se consulta /etc/login.defs cuando
+#   existe porque algunas distribuciones pueden usar un UID mínimo distinto.
+get_uid_min() {
+    local uid_min=""
+
+    if [ -r /etc/login.defs ]; then
+        uid_min="$(awk '$1 == "UID_MIN" {print $2; exit}' /etc/login.defs)"
+    fi
+
+    if [ -z "$uid_min" ]; then
+        uid_min=1000
+    fi
+
+    echo "$uid_min"
+}
+
+# get_created_users
+# Entrada:
+#   No recibe parámetros.
+# Salida:
+#   Imprime un usuario por línea.
+# Descripción:
+#   Lee la base local de usuarios mediante getent o /etc/passwd. Se consideran
+#   usuarios interactivos root y usuarios con UID >= UID_MIN cuyo shell no sea
+#   nologin ni false.
 get_created_users() {
+    local uid_min=""
+
+    uid_min="$(get_uid_min)"
+
     if command -v getent > /dev/null 2>&1; then
         getent passwd
     else
         cat /etc/passwd
-    fi | awk -F: '
-        ($3 == 0 || $3 >= 1000) && $7 !~ /(nologin|false)$/ {
+    fi | awk -F: -v uid_min="$uid_min" '
+        ($3 == 0 || $3 >= uid_min) && $7 !~ /(nologin|false)$/ {
             print $1
         }
     ' | sort
 }
 
+# get_last_login_for_user
+# Entrada:
+#   $1: nombre del usuario.
+# Salida:
+#   Imprime la fecha de último login o un mensaje de ausencia de registro.
+# Descripción:
+#   Intenta primero con lastlog, porque está diseñado para consultar el último
+#   ingreso por usuario. Si no está disponible, usa last como fuente alternativa.
 get_last_login_for_user() {
     local username="$1"
     local login_line=""
@@ -46,6 +97,14 @@ get_last_login_for_user() {
     echo "No disponible"
 }
 
+# show_users_last_login
+# Entrada:
+#   No recibe parámetros.
+# Salida:
+#   Imprime una tabla con usuario y último login.
+# Descripción:
+#   Coordina la consulta de usuarios y la consulta individual de último ingreso.
+#   La salida se mantiene simple para poder sustentarse desde consola.
 show_users_last_login() {
     local username=""
 

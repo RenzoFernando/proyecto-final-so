@@ -1,10 +1,28 @@
 #!/bin/bash
 
-# Punto de entrada de la herramienta Bash.
-# Carga los módulos funcionales, valida las funciones requeridas y controla el menú principal.
+# ==============================================================================
+# Archivo: main.sh
+# Propósito:
+#   Punto de entrada de la herramienta Bash del proyecto final de Sistemas
+#   Operacionales. Este script carga las bibliotecas funcionales, verifica que las
+#   funciones requeridas existan y mantiene el ciclo principal del menú.
+# Relación con el curso:
+#   El archivo sigue el modelo de script de shell interpretado: inicia con shebang,
+#   declara variables al comienzo de los bloques relevantes, usa funciones para
+#   separar responsabilidades y aplica una instrucción case para selección múltiple.
+# ==============================================================================
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+# import_script
+# Entrada:
+#   $1: ruta absoluta del script que se desea cargar.
+# Salida:
+#   No imprime nada si la carga es correcta. Termina la aplicación si el archivo no
+#   existe o no puede leerse.
+# Descripción:
+#   Centraliza la carga de módulos con source. Antes de importar, valida existencia
+#   y permiso de lectura para evitar errores difíciles de rastrear durante el menú.
 import_script() {
     local script_path="$1"
 
@@ -21,6 +39,14 @@ import_script() {
     source "$script_path"
 }
 
+# require_function
+# Entrada:
+#   $1: nombre de la función que debe estar disponible.
+# Salida:
+#   No imprime nada si la función existe. Termina la aplicación si no fue cargada.
+# Descripción:
+#   Verifica la integridad mínima de los módulos importados. Si un archivo existe,
+#   pero no define la función esperada, la aplicación falla antes de mostrar el menú.
 require_function() {
     local function_name="$1"
 
@@ -46,6 +72,14 @@ require_function show_top_ten_files
 require_function show_memory_and_swap
 require_function run_backup
 
+# main
+# Entrada:
+#   Lee por teclado la opción seleccionada por el usuario.
+# Salida:
+#   Ejecuta la función correspondiente a cada opción del proyecto.
+# Descripción:
+#   Mantiene el menú en un ciclo while. La instrucción case concentra la selección
+#   múltiple y permite salir únicamente cuando el usuario selecciona la opción 0.
 main() {
     local option=""
 

@@ -1,8 +1,40 @@
 #!/bin/bash
 
-# Busca los diez archivos más grandes dentro de la ruta indicada por el usuario.
-# La salida conserva la trayectoria completa de cada archivo.
+# ==============================================================================
+# Archivo: lib/files.sh
+# Propósito:
+#   Implementar la opción 3 del proyecto: mostrar los diez archivos más grandes.
+# Relación con el curso:
+#   Combina comandos de UNIX mediante pipeline. find produce los registros, sort
+#   los ordena por tamaño, head limita la salida y awk formatea la tabla final.
+# ==============================================================================
 
+# resolve_search_path
+# Entrada:
+#   $1: ruta suministrada por el usuario.
+# Salida:
+#   Imprime la trayectoria absoluta resuelta.
+# Descripción:
+#   Usa realpath cuando existe. Si no existe, cambia temporalmente al directorio y
+#   usa pwd -P para obtener una ruta física absoluta.
+resolve_search_path() {
+    local input_path="$1"
+
+    if command -v realpath > /dev/null 2>&1; then
+        realpath "$input_path" 2> /dev/null
+    else
+        cd "$input_path" 2> /dev/null && pwd -P
+    fi
+}
+
+# show_top_ten_files
+# Entrada:
+#   Lee por teclado el disco, filesystem o directorio que se analizará.
+# Salida:
+#   Imprime tamaño en bytes y trayectoria completa de los diez archivos más grandes.
+# Descripción:
+#   Valida existencia, tipo de ruta y permisos. La búsqueda usa registros terminados
+#   en nulo para soportar nombres de archivo con espacios u otros caracteres.
 show_top_ten_files() {
     local input_path=""
     local search_path=""
@@ -33,11 +65,7 @@ show_top_ten_files() {
         return 1
     fi
 
-    if command -v realpath > /dev/null 2>&1; then
-        search_path="$(realpath "$input_path" 2> /dev/null)"
-    else
-        search_path="$(cd "$input_path" 2> /dev/null && pwd -P)"
-    fi
+    search_path="$(resolve_search_path "$input_path")"
 
     if [ -z "$search_path" ]; then
         echo "No se pudo resolver la trayectoria completa."

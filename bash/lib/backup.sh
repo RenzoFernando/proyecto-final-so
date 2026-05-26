@@ -1,12 +1,35 @@
 #!/bin/bash
 
-# Realiza una copia de seguridad de un directorio hacia una memoria USB.
-# Además crea un catálogo CSV con ruta relativa y fecha de última modificación.
+# ==============================================================================
+# Archivo: lib/backup.sh
+# Propósito:
+#   Implementar la opción 5 del proyecto: backup de un directorio a una memoria USB
+#   con generación de catálogo.
+# Relación con el curso:
+#   Usa manejo de archivos y directorios, validaciones con test, variables locales,
+#   sustitución de comandos, pipeline y procesamiento de texto con sed/find/stat.
+# ==============================================================================
 
+# escape_csv_field
+# Entrada:
+#   $1: texto que será escrito como campo CSV.
+# Salida:
+#   Imprime el texto con comillas dobles escapadas según formato CSV.
+# Descripción:
+#   El catálogo se escribe entre comillas. Si una ruta contiene comillas, deben
+#   duplicarse para no romper la estructura del archivo CSV.
 escape_csv_field() {
     printf '%s' "$1" | sed 's/"/""/g'
 }
 
+# resolve_directory_path
+# Entrada:
+#   $1: directorio a resolver.
+# Salida:
+#   Imprime la ruta absoluta del directorio.
+# Descripción:
+#   Normaliza origen y destino antes de compararlos. Esto evita aceptar como rutas
+#   distintas dos formas equivalentes de escribir el mismo directorio.
 resolve_directory_path() {
     local directory_path="$1"
 
@@ -17,6 +40,14 @@ resolve_directory_path() {
     fi
 }
 
+# get_mount_source_for_path
+# Entrada:
+#   $1: ruta dentro del filesystem montado.
+# Salida:
+#   Imprime el dispositivo origen del punto de montaje.
+# Descripción:
+#   findmnt identifica el dispositivo que soporta una ruta. Si no existe, df funciona
+#   como alternativa para obtener la primera columna del montaje.
 get_mount_source_for_path() {
     local directory_path="$1"
 
@@ -28,6 +59,14 @@ get_mount_source_for_path() {
     df -P "$directory_path" 2> /dev/null | awk 'NR == 2 {print $1}'
 }
 
+# is_usb_destination
+# Entrada:
+#   $1: ruta destino resuelta.
+# Salida:
+#   Status 0 si el destino corresponde a USB/removible; status 1 en caso contrario.
+# Descripción:
+#   Verifica la rúbrica del backup a USB. Primero obtiene el dispositivo montado y
+#   luego consulta con lsblk si el dispositivo o su padre son removibles o USB.
 is_usb_destination() {
     local destination_path="$1"
     local mount_source=""
@@ -62,6 +101,51 @@ is_usb_destination() {
     return 1
 }
 
+# write_backup_catalog
+# Entrada:
+#   $1: directorio de backup ya creado.
+#   $2: ruta del archivo CSV que será generado.
+# Salida:
+#   Crea el catálogo con ruta relativa y fecha de última modificación.
+# Descripción:
+#   Recorre los archivos copiados, excluye el propio catálogo y escribe registros
+#   CSV ordenados. Se usan nombres terminados en nulo para soportar espacios.
+write_backup_catalog() {
+    local backup_dir="$1"
+    local catalog_file="$2"
+    local relative_path=""
+    local last_modified=""
+    local escaped_path=""
+    local escaped_modified=""
+    local file_path=""
+
+    if ! printf '"Ruta","UltimaModificacion"\n' > "$catalog_file"; then
+        return 1
+    fi
+
+    while IFS= read -r -d '' file_path; do
+        relative_path="${file_path#"$backup_dir"/}"
+
+        if [ "$relative_path" != "catalogo_backup.csv" ]; then
+            if last_modified="$(stat -c '%y' "$file_path" 2> /dev/null)"; then
+                escaped_path="$(escape_csv_field "$relative_path")"
+                escaped_modified="$(escape_csv_field "$last_modified")"
+                printf '"%s","%s"\n' "$escaped_path" "$escaped_modified" >> "$catalog_file"
+            fi
+        fi
+    done < <(find "$backup_dir" -type f -print0 2> /dev/null | LC_ALL=C sort -z)
+
+    return 0
+}
+
+# run_backup
+# Entrada:
+#   Lee por teclado directorio origen y directorio destino en USB.
+# Salida:
+#   Copia archivos y muestra la ruta del backup y del catálogo.
+# Descripción:
+#   Coordina toda la opción 5: valida entradas, permisos, rutas equivalentes, destino
+#   USB, crea directorio con timestamp, copia con cp -a y genera catálogo CSV.
 run_backup() {
     print_section_title "Backup de directorio a USB con catálogo"
 
@@ -73,11 +157,6 @@ run_backup() {
     local timestamp=""
     local backup_dir=""
     local catalog_file=""
-    local relative_path=""
-    local last_modified=""
-    local escaped_path=""
-    local escaped_modified=""
-    local file_path=""
 
     read -r -p "Digite el directorio origen: " source_dir
     read -r -p "Digite el directorio destino en la USB: " destination_dir
@@ -158,23 +237,11 @@ run_backup() {
         return 1
     fi
 
-    if ! printf '"Ruta","UltimaModificacion"\n' > "$catalog_file"; then
+    if ! write_backup_catalog "$backup_dir" "$catalog_file"; then
         echo "No se pudo crear el catálogo del backup."
         rm -rf "$backup_dir"
         return 1
     fi
-
-    while IFS= read -r -d '' file_path; do
-        relative_path="${file_path#"$backup_dir"/}"
-
-        if [ "$relative_path" != "catalogo_backup.csv" ]; then
-            if last_modified="$(stat -c '%y' "$file_path" 2> /dev/null)"; then
-                escaped_path="$(escape_csv_field "$relative_path")"
-                escaped_modified="$(escape_csv_field "$last_modified")"
-                printf '"%s","%s"\n' "$escaped_path" "$escaped_modified" >> "$catalog_file"
-            fi
-        fi
-    done < <(find "$backup_dir" -type f -print0 2> /dev/null | LC_ALL=C sort -z)
 
     echo "Backup finalizado correctamente."
     echo "Directorio de backup: $backup_dir"
