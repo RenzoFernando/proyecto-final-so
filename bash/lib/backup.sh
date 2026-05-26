@@ -70,18 +70,70 @@ get_mount_source_for_path() {
 is_usb_destination() {
     local destination_path="$1"
     local mount_source=""
+    local mount_fstype=""
     local parent_device=""
+    local normalized_destination=""
+    local drive_letter=""
+    local windows_drive_type=""
+
+    if command -v findmnt > /dev/null 2>&1; then
+        mount_fstype="$(findmnt -T "$destination_path" -no FSTYPE 2> /dev/null | head -n 1)"
+    else
+        mount_fstype="$(df -T "$destination_path" 2> /dev/null | awk 'NR == 2 {print $2}')"
+    fi
+
+    mount_source="$(get_mount_source_for_path "$destination_path")"
+    normalized_destination="${destination_path%/}"
+
+    case "$normalized_destination" in
+        /mnt/[A-Za-z]|/mnt/[A-Za-z]/*)
+            drive_letter="$(printf '%s' "$normalized_destination" | awk -F/ '{print toupper($3)}')"
+            ;;
+    esac
+
+    if [ -z "$drive_letter" ]; then
+        case "$mount_source" in
+            [A-Za-z]:\\|[A-Za-z]:/|[A-Za-z]:\\*|[A-Za-z]:/*)
+                drive_letter="$(printf '%s' "$mount_source" | cut -c 1 | tr '[:lower:]' '[:upper:]')"
+                ;;
+        esac
+    fi
+
+    if [ -n "$drive_letter" ] && { [ "$mount_fstype" = "drvfs" ] || [ "$mount_fstype" = "9p" ] || printf '%s' "$mount_source" | grep -Eq '^[A-Za-z]:[\\/]'; }; then
+        if command -v powershell.exe > /dev/null 2>&1; then
+            windows_drive_type="$(powershell.exe -NoProfile -Command "(Get-CimInstance Win32_LogicalDisk -Filter \"DeviceID='$drive_letter:'\").DriveType" 2> /dev/null | tr -d '\r' | awk 'NF > 0 {print $1; exit}')"
+
+            if [ "$windows_drive_type" = "2" ]; then
+                return 0
+            fi
+
+            return 1
+        fi
+
+        case "$drive_letter" in
+            C)
+                return 1
+                ;;
+            *)
+                return 0
+                ;;
+        esac
+    fi
 
     if ! command -v lsblk > /dev/null 2>&1; then
         return 1
     fi
 
-    mount_source="$(get_mount_source_for_path "$destination_path")"
-
     case "$mount_source" in
         /dev/*)
             ;;
         *)
+            case "$destination_path" in
+                /media/*|/run/media/*)
+                    return 0
+                    ;;
+            esac
+
             return 1
             ;;
     esac
@@ -97,6 +149,12 @@ is_usb_destination() {
             return 0
         fi
     fi
+
+    case "$destination_path" in
+        /media/*|/run/media/*)
+            return 0
+            ;;
+    esac
 
     return 1
 }

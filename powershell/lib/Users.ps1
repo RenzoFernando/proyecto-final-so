@@ -27,7 +27,7 @@ function Get-NetUserLastLogin {
     $loginLine = $netOutput | Where-Object { $_ -match "^(Last logon|Último inicio|Ultimo inicio)" } | Select-Object -First 1
 
     if ([string]::IsNullOrWhiteSpace($loginLine)) {
-        return "No disponible con esta fuente"
+        return "Sin registro disponible"
     }
 
     $loginValue = ($loginLine -replace "^(Last logon|Último inicio de sesión|Ultimo inicio de sesion|Último inicio|Ultimo inicio)\s+", "").Trim()
@@ -37,6 +37,61 @@ function Get-NetUserLastLogin {
     }
 
     return $loginValue
+}
+
+function Get-QuserLastLogin {
+    param (
+        [string]$UserName
+    )
+
+    try {
+        $userPattern = "^" + [regex]::Escape($UserName) + "\s+"
+        $sessionLines = @(quser 2> $null)
+
+        foreach ($line in $sessionLines) {
+            $sessionLine = ($line -replace "^\s*>?\s*", "").Trim()
+
+            if ($sessionLine -match $userPattern) {
+                $columns = $sessionLine -split "\s{2,}"
+                $logonTime = $columns[$columns.Count - 1].Trim()
+
+                if (-not [string]::IsNullOrWhiteSpace($logonTime) -and $logonTime -notmatch "LOGON TIME|TIEMPO") {
+                    return "Sesión activa desde $logonTime"
+                }
+            }
+        }
+
+        return ""
+    } catch {
+        return ""
+    }
+}
+
+function Get-UserLastLogin {
+    param (
+        [string]$UserName,
+        [object]$LastLogon
+    )
+
+    if ($null -ne $LastLogon -and -not [string]::IsNullOrWhiteSpace($LastLogon.ToString())) {
+        return $LastLogon
+    }
+
+    $netLogin = Get-NetUserLastLogin -UserName $UserName
+
+    if ([string]::IsNullOrWhiteSpace($netLogin) -or $netLogin -eq "Nunca o sin registro" -or $netLogin -eq "Sin registro disponible") {
+        $sessionLogin = Get-QuserLastLogin -UserName $UserName
+
+        if (-not [string]::IsNullOrWhiteSpace($sessionLogin)) {
+            return $sessionLogin
+        }
+    }
+
+    if ([string]::IsNullOrWhiteSpace($netLogin)) {
+        return "Sin registro disponible"
+    }
+
+    return $netLogin
 }
 
 function Get-LocalUsersWithLastLogin {
@@ -57,13 +112,7 @@ function Get-LocalUsersWithLastLogin {
             Expression = { $_.Name }
         }, @{
             Name = "UltimoLogin"
-            Expression = {
-                if ($_.LastLogon) {
-                    $_.LastLogon
-                } else {
-                    "Nunca o sin registro"
-                }
-            }
+            Expression = { Get-UserLastLogin -UserName $_.Name -LastLogon $_.LastLogon }
         }
 
         return
@@ -77,7 +126,7 @@ function Get-LocalUsersWithLastLogin {
                 Expression = { $_.Name }
             }, @{
                 Name = "UltimoLogin"
-                Expression = { Get-NetUserLastLogin -UserName $_.Name }
+                Expression = { Get-UserLastLogin -UserName $_.Name -LastLogon $null }
             }
 
         return
@@ -90,7 +139,7 @@ function Get-LocalUsersWithLastLogin {
                     Expression = { $_.Name }
                 }, @{
                     Name = "UltimoLogin"
-                    Expression = { Get-NetUserLastLogin -UserName $_.Name }
+                    Expression = { Get-UserLastLogin -UserName $_.Name -LastLogon $null }
                 }
 
             return
