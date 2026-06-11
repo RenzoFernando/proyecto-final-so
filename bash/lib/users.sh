@@ -6,8 +6,8 @@
 #   Implementar la opción 1 del proyecto: usuarios creados y fecha de último login.
 # Relación con el curso:
 #   Usa archivos y comandos propios de Linux. /etc/passwd funciona como fuente de
-#   usuarios locales, mientras lastlog o last consultan registros históricos de
-#   ingreso al sistema.
+#   usuarios locales, mientras lastlog, last, who o la sesión actual funcionan como
+#   fuentes para consultar el ingreso del usuario.
 # ==============================================================================
 
 # get_uid_min
@@ -58,14 +58,56 @@ get_created_users() {
     ' | sort
 }
 
+# get_active_session_for_user
+# Entrada:
+#   $1: nombre del usuario.
+# Salida:
+#   Imprime información de sesión activa si el usuario está conectado.
+# Descripción:
+#   En WSL/Kali algunos registros históricos como lastlog o wtmp pueden no actualizarse.
+#   Por eso se agrega una fuente de respaldo basada en who y en el usuario actual.
+get_active_session_for_user() {
+    local username="$1"
+    local session_line=""
+    local current_user=""
+    local login_user=""
+
+    if command -v who > /dev/null 2>&1; then
+        session_line="$(who 2> /dev/null | awk -v user="$username" '
+            $1 == user {
+                $1="";
+                sub(/^[[:space:]]+/, "");
+                print "Sesión activa: " $0;
+                exit
+            }
+        ')"
+
+        if [ -n "$session_line" ]; then
+            echo "$session_line"
+            return 0
+        fi
+    fi
+
+    current_user="$(id -un 2> /dev/null)"
+    login_user="$(logname 2> /dev/null)"
+
+    if [ "$username" = "$current_user" ] || [ "$username" = "$USER" ] || [ "$username" = "$login_user" ]; then
+        echo "Sesión actual: $(date '+%Y-%m-%d %H:%M:%S')"
+        return 0
+    fi
+
+    return 1
+}
+
 # get_last_login_for_user
 # Entrada:
 #   $1: nombre del usuario.
 # Salida:
-#   Imprime la fecha de último login o un mensaje de ausencia de registro.
+#   Imprime la fecha de último login, una sesión activa o un mensaje de ausencia.
 # Descripción:
-#   Intenta primero con lastlog, porque está diseñado para consultar el último
-#   ingreso por usuario. Si no está disponible, usa last como fuente alternativa.
+#   Intenta primero con lastlog, luego con last y finalmente con la sesión activa.
+#   Esto corrige ambientes WSL/Kali donde lastlog puede decir Never aunque el usuario
+#   actual esté ejecutando la herramienta.
 get_last_login_for_user() {
     local username="$1"
     local login_line=""
@@ -73,28 +115,26 @@ get_last_login_for_user() {
     if command -v lastlog > /dev/null 2>&1; then
         login_line="$(lastlog -u "$username" 2> /dev/null | awk 'NR == 2 {$1=""; sub(/^[[:space:]]+/, ""); print}')"
 
-        if [ -z "$login_line" ] || printf "%s" "$login_line" | grep -Eiq "never|nunca|jam[aá]s"; then
-            echo "Nunca o sin registro"
+        if [ -n "$login_line" ] && ! printf "%s" "$login_line" | grep -Eiq "never|nunca|jam[aá]s"; then
+            echo "$login_line"
             return
         fi
-
-        echo "$login_line"
-        return
     fi
 
     if command -v last > /dev/null 2>&1; then
         login_line="$(last -n 1 "$username" 2> /dev/null | awk 'NF > 0 && $0 !~ /wtmp begins/ {print; exit}')"
 
-        if [ -z "$login_line" ]; then
-            echo "Nunca o sin registro"
-        else
+        if [ -n "$login_line" ]; then
             echo "$login_line"
+            return
         fi
+    fi
 
+    if get_active_session_for_user "$username"; then
         return
     fi
 
-    echo "No disponible"
+    echo "Nunca o sin registro"
 }
 
 # show_users_last_login
